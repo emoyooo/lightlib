@@ -1,49 +1,3 @@
-<<<<<<< HEAD
-# .
-
-This template should help get you started developing with Vue 3 in Vite.
-
-## Recommended IDE Setup
-
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
-
-## Recommended Browser Setup
-
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd) 
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
-
-```sh
-npm install
-```
-
-### Compile and Hot-Reload for Development
-
-```sh
-npm run dev
-```
-
-### Compile and Minify for Production
-
-```sh
-npm run build
-```
-
-### Lint with [ESLint](https://eslint.org/)
-
-```sh
-npm run lint
-```
-=======
 # 📚 LightLib - Online Library System
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
@@ -71,6 +25,7 @@ LightLib is an online library platform that allows users to browse, search, read
 ## 🎯 Project Scope
 
 LightLib serves as a centralized platform for:
+
 - Discovering and accessing digital books
 - Managing personal reading collections
 - Tracking reading progress across devices
@@ -109,6 +64,7 @@ LightLib serves as a centralized platform for:
 ### Tech Stack
 
 #### Frontend
+
 - **Framework:** React.js
 - **State Management:** React Context API / Redux
 - **Routing:** React Router
@@ -117,6 +73,7 @@ LightLib serves as a centralized platform for:
 - **UI Components:** Shadcn/ui
 
 #### Backend
+
 - **Runtime:** Node.js
 - **Framework:** Express.js
 - **Database:** PostgreSQL
@@ -126,6 +83,7 @@ LightLib serves as a centralized platform for:
 - **Security:** Helmet, CORS
 
 #### External APIs
+
 - Google Books API
 - Gutendex (Project Gutenberg)
 - Springer Open Access API
@@ -165,6 +123,7 @@ nano .env
 ```
 
 **Example .env file:**
+
 ```env
 PORT=5000
 DATABASE_URL=postgresql://username:password@localhost:5432/lightlib
@@ -204,6 +163,7 @@ nano .env
 ```
 
 **Example .env file:**
+
 ```env
 REACT_APP_API_URL=http://localhost:5000/api
 ```
@@ -253,6 +213,7 @@ lightlib/
 ## 🔌 API Endpoints
 
 ### Authentication
+
 ```
 POST   /api/auth/register        # Register new user
 POST   /api/auth/login           # Login user
@@ -260,6 +221,7 @@ POST   /api/auth/forgot-password # Request password reset
 ```
 
 ### Books
+
 ```
 GET    /api/books                # Get book catalog
 GET    /api/books/search         # Search books
@@ -268,6 +230,7 @@ GET    /api/books/:id/content    # Get book content
 ```
 
 ### Library Management
+
 ```
 GET    /api/users/library        # Get user's library
 POST   /api/users/library        # Add book to library
@@ -276,6 +239,7 @@ DELETE /api/users/library/:id    # Remove book from library
 ```
 
 ### Reading Progress
+
 ```
 GET    /api/users/progress/:id   # Get reading progress
 PUT    /api/users/progress       # Update progress
@@ -289,6 +253,7 @@ For detailed API documentation, see [API.md](docs/API.md)
 ## 🧪 Running Tests
 
 ### Backend Tests
+
 ```bash
 cd backend
 npm test                    # Run all tests
@@ -296,6 +261,7 @@ npm run test:coverage       # Run with coverage report
 ```
 
 ### Frontend Tests
+
 ```bash
 cd frontend
 npm test                    # Run all tests
@@ -303,6 +269,7 @@ npm run test:coverage       # Run with coverage report
 ```
 
 ### End-to-End Tests
+
 ```bash
 npm run test:e2e           # Run E2E tests
 ```
@@ -322,7 +289,7 @@ npm run test:e2e           # Run E2E tests
 
 ### Screenshots
 
-*(Add screenshots of your application here)*
+_(Add screenshots of your application here)_
 
 - Home/Catalog Page
 - Book Details Page
@@ -333,6 +300,7 @@ npm run test:e2e           # Run E2E tests
 ## 📊 Database Schema
 
 ### Users
+
 - id (Primary Key)
 - email (Unique)
 - password_hash
@@ -340,6 +308,7 @@ npm run test:e2e           # Run E2E tests
 - updated_at
 
 ### User Library
+
 - id (Primary Key)
 - user_id (Foreign Key)
 - book_id (External API ID)
@@ -347,6 +316,7 @@ npm run test:e2e           # Run E2E tests
 - added_at
 
 ### Bookmarks
+
 - id (Primary Key)
 - user_id (Foreign Key)
 - book_id (External API ID)
@@ -354,6 +324,7 @@ npm run test:e2e           # Run E2E tests
 - created_at
 
 ### Reading Progress
+
 - id (Primary Key)
 - user_id (Foreign Key)
 - book_id (External API ID)
@@ -414,8 +385,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👥 Authors
 
-- **Bekenova Dina** - *Developer* - [GitHub Profile](https://github.com/bekenova-dina)
-- **Taubayev Yerassyl** - *Developer* - [GitHub Profile](https://github.com/taubayev-yerassyl)
+- **Bekenova Dina** - _Developer_ - [GitHub Profile](https://github.com/bekenova-dina)
+- **Taubayev Yerassyl** - _Developer_ - [GitHub Profile](https://github.com/taubayev-yerassyl)
 
 ## 🙏 Acknowledgments
 
@@ -431,6 +402,7 @@ Project Link: [https://github.com/yourusername/lightlib](https://github.com/your
 ## 🗺️ Roadmap
 
 ### Version 1.0 (Current)
+
 - ✅ User authentication
 - ✅ Book catalog and search
 - ✅ Reading interface
@@ -438,12 +410,14 @@ Project Link: [https://github.com/yourusername/lightlib](https://github.com/your
 - ✅ Progress tracking
 
 ### Version 1.1 (Planned)
+
 - ⏳ Book recommendations
 - ⏳ User reviews and ratings
 - ⏳ Social features (share books)
 - ⏳ Reading statistics dashboard
 
 ### Version 2.0 (Future)
+
 - 🔮 Gamification (achievements, badges)
 - 🔮 Multi-language support
 - 🔮 Offline reading mode
@@ -482,4 +456,3 @@ For a full list of issues, see [GitHub Issues](https://github.com/yourusername/l
 ---
 
 **Made with ❤️ by the LightLib Team**
->>>>>>> 4d324a129a54910b7f09175cf37423f53803f9d2
