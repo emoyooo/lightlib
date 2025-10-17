@@ -10,14 +10,13 @@ import { authenticate } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// Validation rules
 const registerValidation = [
   body("email")
     .isEmail()
     .normalizeEmail()
     .withMessage("Please provide a valid email"),
   body("nickname")
-    .optional({ values: "falsy" }) // Change this line - treats empty strings as optional
+    .optional({ values: "falsy" })
     .trim()
     .isLength({ min: 2, max: 30 })
     .withMessage("Nickname must be between 2 and 30 characters")
@@ -38,7 +37,6 @@ const loginValidation = [
   body("password").notEmpty().withMessage("Password is required"),
 ];
 
-// Routes
 router.post("/register", registerValidation, register);
 router.post("/login", loginValidation, login);
 router.get("/profile", authenticate, getProfile);

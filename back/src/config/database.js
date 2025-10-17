@@ -22,7 +22,6 @@ pool.on("error", (err) => {
   process.exit(-1);
 });
 
-// Initialize database tables
 export const initDatabase = async () => {
   const createUsersTable = `
     CREATE TABLE IF NOT EXISTS users (

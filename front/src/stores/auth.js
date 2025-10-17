@@ -12,7 +12,6 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => !!token.value)
 
-  // Set up axios interceptor
   const setupAxiosInterceptor = () => {
     axios.interceptors.request.use(
       (config) => {
@@ -37,7 +36,6 @@ export const useAuthStore = defineStore('auth', () => {
         password,
       }
 
-      // Only add nickname if it's not empty
       if (nickname && nickname.trim()) {
         payload.nickname = nickname.trim()
       }
@@ -119,7 +117,6 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Initialize user from token
   if (token.value) {
     fetchProfile()
   }

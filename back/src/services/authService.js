@@ -9,13 +9,11 @@ class AuthService {
   }
 
   async register(email, password, nickname = null) {
-    // Check if user already exists
     const existingUser = await User.findByEmail(email);
     if (existingUser) {
       throw new Error("User already exists");
     }
 
-    // Create new user
     const user = await User.create(email, password, nickname);
     const token = this.generateToken(user.id);
 
@@ -31,19 +29,16 @@ class AuthService {
   }
 
   async login(email, password) {
-    // Find user by email
     const user = await User.findByEmail(email);
     if (!user) {
       throw new Error("Invalid credentials");
     }
 
-    // Verify password
     const isPasswordValid = await User.comparePassword(password, user.password);
     if (!isPasswordValid) {
       throw new Error("Invalid credentials");
     }
 
-    // Generate token
     const token = this.generateToken(user.id);
 
     return {

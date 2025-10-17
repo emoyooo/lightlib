@@ -4,7 +4,6 @@ import { AppError } from "../middleware/errorHandler.js";
 
 export const register = async (req, res, next) => {
   try {
-    // Validate request
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
@@ -12,7 +11,6 @@ export const register = async (req, res, next) => {
 
     const { email, password, nickname } = req.body;
 
-    // Register user
     const result = await authService.register(email, password, nickname);
 
     res.status(201).json({
@@ -33,7 +31,6 @@ export const register = async (req, res, next) => {
 
 export const login = async (req, res, next) => {
   try {
-    // Validate request
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
@@ -41,7 +38,6 @@ export const login = async (req, res, next) => {
 
     const { email, password } = req.body;
 
-    // Login user
     const result = await authService.login(email, password);
 
     res.status(200).json({
@@ -75,9 +71,6 @@ export const getProfile = async (req, res, next) => {
 
 export const logout = async (req, res, next) => {
   try {
-    // Note: With JWT, logout is typically handled on the client side
-    // by removing the token. If you need to invalidate tokens server-side,
-    // you'll need to implement a token blacklist
     res.status(200).json({
       success: true,
       message: "Logout successful",
