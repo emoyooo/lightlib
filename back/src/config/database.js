@@ -38,9 +38,12 @@ export const initDatabase = async () => {
     CREATE TABLE IF NOT EXISTS user_library (
       id SERIAL PRIMARY KEY,
       user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-      book_id VARCHAR(255) NOT NULL,
-      status VARCHAR(50) DEFAULT 'want_to_read',
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      book_id INTEGER NOT NULL,
+      title VARCHAR(500) NOT NULL,
+      author VARCHAR(255),
+      cover_image TEXT,
+      status VARCHAR(20) DEFAULT 'plan' CHECK (status IN ('reading', 'plan', 'finished', 'favorite')),
+      added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(user_id, book_id)
     );
   `;
@@ -49,10 +52,12 @@ export const initDatabase = async () => {
     CREATE TABLE IF NOT EXISTS reading_progress (
       id SERIAL PRIMARY KEY,
       user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-      book_id VARCHAR(255) NOT NULL,
+      book_id INTEGER NOT NULL,
       current_page INTEGER DEFAULT 0,
-      total_pages INTEGER,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      total_pages INTEGER DEFAULT 0,
+      current_chapter INTEGER DEFAULT 1,
+      percentage INTEGER DEFAULT 0,
+      last_read TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(user_id, book_id)
     );
   `;
@@ -61,11 +66,21 @@ export const initDatabase = async () => {
     CREATE TABLE IF NOT EXISTS bookmarks (
       id SERIAL PRIMARY KEY,
       user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-      book_id VARCHAR(255) NOT NULL,
-      page_number INTEGER NOT NULL,
+      book_id INTEGER NOT NULL,
+      page INTEGER NOT NULL,
+      chapter INTEGER,
       note TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+  `;
+
+  const createIndexes = `
+    CREATE INDEX IF NOT EXISTS idx_user_library_user_id ON user_library(user_id);
+    CREATE INDEX IF NOT EXISTS idx_user_library_status ON user_library(status);
+    CREATE INDEX IF NOT EXISTS idx_reading_progress_user_id ON reading_progress(user_id);
+    CREATE INDEX IF NOT EXISTS idx_reading_progress_book_id ON reading_progress(book_id);
+    CREATE INDEX IF NOT EXISTS idx_bookmarks_user_id ON bookmarks(user_id);
+    CREATE INDEX IF NOT EXISTS idx_bookmarks_book_id ON bookmarks(book_id);
   `;
 
   try {
@@ -73,6 +88,7 @@ export const initDatabase = async () => {
     await pool.query(createUserLibraryTable);
     await pool.query(createReadingProgressTable);
     await pool.query(createBookmarksTable);
+    await pool.query(createIndexes);
     console.log("Database tables initialized successfully");
   } catch (error) {
     console.error("Error initializing database:", error);

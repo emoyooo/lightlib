@@ -3,6 +3,10 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { initDatabase } from "./config/database.js";
 import authRoutes from "./routes/authRoutes.js";
+import bookRoutes from "./routes/bookRoutes.js";
+import libraryRoutes from "./routes/libraryRoutes.js";
+import readingRoutes from "./routes/readingRoutes.js";
+import { authenticate } from "./middleware/authMiddleware.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
 dotenv.config();
@@ -10,7 +14,6 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
 app.use(
   cors({
     origin: process.env.FRONTEND_URL,
@@ -20,18 +23,17 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/books", bookRoutes);
+app.use("/api/library", authenticate, libraryRoutes);
+app.use("/api/reading", authenticate, readingRoutes);
 
-// Health check
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", message: "Server is running" });
 });
 
-// Error handling middleware
 app.use(errorHandler);
 
-// Initialize database and start server
 const startServer = async () => {
   try {
     await initDatabase();
