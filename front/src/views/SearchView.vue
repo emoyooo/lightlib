@@ -1,273 +1,430 @@
 <script setup>
-import { ref, computed } from 'vue'
-import { useAuthStore } from '../stores/auth'
-import { useRouter } from 'vue-router'
+import { ref, onMounted } from "vue";
+import { useRouter } from "vue-router";
+import axios from "axios";
+import lightliblogo from "@/assets/lightliblogo.png";
 
-const authStore = useAuthStore()
-const router = useRouter()
+const router = useRouter();
 
-// Кнопка выхода
-const handleLogout = () => {
-  authStore.logout()
-  router.push('/login')
-}
+// состояния
+const searchQuery = ref("");
+const books = ref([]);
+const loading = ref(false);
+const genres = ["Fiction", "Science", "History", "Philosophy", "Fantasy", "Poetry", "Drama"];
+const selectedGenre = ref("");
 
-// Данные книг (пример, можно потом подключить к API)
-const books = ref([
-  { title: 'The Great Gatsby', author: 'F. Scott Fitzgerald', genre: 'Classic' },
-  { title: 'The Silent Patient', author: 'Alex Michaelides', genre: 'Thriller' },
-  { title: 'It Ends with Us', author: 'Colleen Hoover', genre: 'Romance' },
-  { title: '1984', author: 'George Orwell', genre: 'Dystopia' },
-  { title: 'The Hobbit', author: 'J.R.R. Tolkien', genre: 'Fantasy' },
-])
+const showCategoryPicker = ref(false);
+const selectedBook = ref(null);
+const categories = ["Reading Now", "In Plans", "Finished", "Favorites"];
 
-// Фильтры
-const query = ref('')
-const genre = ref('All')
-const genres = ['All', 'Classic', 'Romance', 'Fantasy', 'Thriller', 'Dystopia']
+// переключатель для показа жанров
+const showGenres = ref(false);
 
-// Отфильтрованные книги
-const filteredBooks = computed(() => {
-  return books.value.filter((book) => {
-    const matchQuery = book.title.toLowerCase().includes(query.value.toLowerCase())
-    const matchGenre = genre.value === 'All' || book.genre === genre.value
-    return matchQuery && matchGenre
-  })
-})
+// загрузка книг
+const fetchBooks = async (query = "", genre = "") => {
+  loading.value = true;
+  try {
+    let url = "https://gutendex.com/books?";
+    if (query) url += `search=${encodeURIComponent(query)}&`;
+    if (genre) url += `topic=${encodeURIComponent(genre)}&`;
+    const res = await axios.get(url);
+    books.value = res.data.results;
+  } catch (err) {
+    console.error("Ошибка загрузки книг:", err);
+  } finally {
+    loading.value = false;
+  }
+};
+
+// старт — рандомные книги
+onMounted(() => {
+  fetchBooks();
+});
+
+const searchBooks = () => {
+  fetchBooks(searchQuery.value, selectedGenre.value);
+};
+
+const applyFilter = (genre) => {
+  selectedGenre.value = genre;
+  showGenres.value = false; // скрываем панель жанров после выбора
+  fetchBooks(searchQuery.value, genre);
+};
+
+// выбор категории
+const pickCategory = (book) => {
+  selectedBook.value = book;
+  showCategoryPicker.value = true;
+};
+
+// добавление в библиотеку
+const addBookToLibrary = (category) => {
+  const key = "lightlib-library";
+  const existing = JSON.parse(localStorage.getItem(key) || "{}");
+
+  if (!existing[category]) existing[category] = [];
+
+  const alreadyAdded = existing[category].some((b) => b.id === selectedBook.value.id);
+  if (!alreadyAdded) existing[category].push(selectedBook.value);
+
+  localStorage.setItem(key, JSON.stringify(existing));
+  showCategoryPicker.value = false;
+  selectedBook.value = null;
+  alert(`✅ Book added to "${category}"!`);
+};
+
+const openBookDetails = (book) => {
+  router.push({ name: "book-details", params: { id: book.id } });
+};
+
+// переключатель панели жанров
+const toggleGenres = () => {
+  showGenres.value = !showGenres.value;
+};
 </script>
 
 <template>
-  <div class="search-page">
+  <div class="search-container" @click.stop>
     <!-- Header -->
-    <header class="header">
-      <div class="header-content">
-        <div class="logo-section">
-          <img src="@/assets/lightliblogo.png" alt="LightLib" class="logo" />
-          <h1 class="brand">LightLib</h1>
-        </div>
-        <nav class="nav">
-          <div class="user-section">
-            <span class="user-email">{{ authStore.user?.email }}</span>
-            <button @click="handleLogout" class="btn-logout">Logout</button>
-          </div>
-        </nav>
+    <header class="search-header">
+      <img :src="lightliblogo" alt="logo" class="logo" />
+      <div class="search-bar">
+        <input
+          v-model="searchQuery"
+          @keyup.enter="searchBooks"
+          placeholder="Search for books..."
+        />
+        <button @click="searchBooks" class="search-btn">🔍</button>
       </div>
     </header>
 
-    <!-- Main content -->
-    <main class="main-content">
-      <h2 class="page-title">Search Books</h2>
-
-      <!-- Search bar -->
-      <div class="search-bar">
-        <input v-model="query" type="text" placeholder="Search by title..." />
-      </div>
-
-      <!-- Genre filter -->
-      <div class="genre-filter">
+    <!-- Filters + Genres Toggle -->
+    <div class="filters-row">
+      <div class="filters">
         <button
-          v-for="g in genres"
-          :key="g"
-          :class="['genre-btn', { active: genre === g }]"
-          @click="genre = g"
+          v-for="genre in genres"
+          :key="genre"
+          @click="applyFilter(genre)"
+          :class="{ active: selectedGenre === genre }"
         >
-          {{ g }}
+          {{ genre }}
         </button>
       </div>
 
-      <!-- Book grid -->
-      <div class="book-grid">
-        <div v-if="filteredBooks.length > 0">
-          <div
-            v-for="(book, index) in filteredBooks"
-            :key="index"
-            class="book-card"
-          >
-            <h3>{{ book.title }}</h3>
-            <p>{{ book.author }}</p>
-            <span class="genre-tag">{{ book.genre }}</span>
+      <!-- Кнопка "Genres" с выезжающей панелью -->
+      <div class="genres-toggle">
+        <button @click.stop="toggleGenres" class="genres-btn">
+          Genres ▾
+        </button>
+
+        <transition name="slide-fade">
+          <div v-if="showGenres" class="genre-picker" @click.stop>
+            <button
+              v-for="g in genres"
+              :key="g"
+              @click="applyFilter(g)"
+              :class="{ active: selectedGenre === g }"
+              class="genre-item"
+            >
+              {{ g }}
+            </button>
+            <button @click="applyFilter('')" class="genre-item clear">
+              All
+            </button>
           </div>
-        </div>
-        <p v-else class="no-results">No books found</p>
+        </transition>
       </div>
-    </main>
+    </div>
+
+    <!-- Books Grid -->
+    <div v-if="loading" class="loading">Loading books...</div>
+    <div v-else class="book-grid">
+      <div v-for="book in books" :key="book.id" class="book-card">
+        <img
+          v-if="book.formats['image/jpeg']"
+          :src="book.formats['image/jpeg']"
+          alt="cover"
+          class="book-cover"
+        />
+        <h3 class="book-title">{{ book.title }}</h3>
+        <p v-if="book.authors?.length" class="book-author">
+          {{ book.authors[0].name }}
+        </p>
+        <button @click="pickCategory(book)" class="add-btn">➕ Add</button>
+        <button @click="openBookDetails(book)" class="details-btn">
+          📖 Details
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal -->
+    <div v-if="showCategoryPicker" class="modal-backdrop">
+      <div class="modal">
+        <h3>Select category</h3>
+        <div class="category-list">
+          <button
+            v-for="cat in categories"
+            :key="cat"
+            @click="addBookToLibrary(cat)"
+          >
+            {{ cat }}
+          </button>
+        </div>
+        <button @click="showCategoryPicker = false" class="cancel-btn">
+          Cancel
+        </button>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <button @click="router.push('/home')">Home</button>
+      <button class="active" @click="router.push('/search')">Search</button>
+      <button @click="router.push('/library')">Library</button>
+      <button @click="router.push('/profile')">Profile</button>
+    </footer>
   </div>
 </template>
 
 <style scoped>
-.search-page {
+.search-container {
+  padding: 1rem;
+  font-family: 'Inter', sans-serif;
   min-height: 100vh;
-  width: 100%;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  color: #2c3e50;
-}
-
-/* Header (скопировано из твоего Home.vue) */
-.header {
-  background: #ffffff;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
-.header-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 1rem 2rem;
+  background: #fff;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
 }
 
-.logo-section {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.logo {
-  width: 40px;
-  height: 40px;
-}
-
-.brand {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #2c3e50;
-  margin: 0;
-}
-
-.user-section {
+.search-header {
   display: flex;
   align-items: center;
   gap: 1rem;
-  padding-left: 2rem;
-  border-left: 2px solid #e2e8f0;
+  margin-bottom: 1rem;
 }
-
-.user-email {
-  color: #475569;
-  font-size: 0.9rem;
-  font-weight: 500;
+.logo {
+  height: 40px;
 }
-
-.btn-logout {
-  padding: 0.5rem 1.25rem;
-  background: #2c3e50;
-  color: #ffffff;
-  border: none;
-  border-radius: 0.5rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-logout:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
-}
-
-/* Main */
-.main-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 3rem 2rem;
-  text-align: center;
-}
-
-.page-title {
-  font-size: 2rem;
-  margin-bottom: 1.5rem;
-}
-
-/* Search input */
-.search-bar input {
-  width: 70%;
-  max-width: 500px;
-  padding: 12px 15px;
-  border-radius: 10px;
-  border: 1px solid #ccc;
-  outline: none;
-  transition: 0.2s;
-  font-size: 1rem;
-}
-
-.search-bar input:focus {
-  border-color: #667eea;
-  box-shadow: 0 0 8px #667eea40;
-}
-
-/* Genre buttons */
-.genre-filter {
+.search-bar {
+  flex: 1;
   display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: 2rem 0;
+  background: #f3f4f6;
+  border-radius: 12px;
+  overflow: hidden;
 }
-
-.genre-btn {
-  padding: 8px 15px;
-  border-radius: 20px;
+.search-bar input {
+  flex: 1;
   border: none;
-  background-color: #eee;
+  padding: 0.6rem 1rem;
+  outline: none;
+  background: transparent;
+}
+.search-btn {
+  background: #0d1b67;
+  color: white;
+  border: none;
+  padding: 0 1rem;
   cursor: pointer;
-  transition: 0.2s;
-  font-weight: 500;
 }
 
-.genre-btn.active {
-  background-color: #667eea;
+/* Filters row */
+.filters-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.filters button {
+  padding: 0.4rem 0.8rem;
+  border: none;
+  background: #f3f4f6;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.filters button.active {
+  background: #0d1b67;
   color: white;
 }
 
-.genre-btn:hover {
-  background-color: #d9e8ff;
+/* Toggle genres */
+.genres-toggle {
+  position: relative;
+}
+.genres-btn {
+  padding: 0.45rem 0.7rem;
+  border-radius: 8px;
+  border: none;
+  background: #eef2ff;
+  cursor: pointer;
+  font-weight: 600;
+}
+.genre-picker {
+  position: absolute;
+  right: 0;
+  top: 110%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  background: white;
+  padding: 0.6rem;
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(13, 27, 103, 0.12);
+  z-index: 30;
+  min-width: 160px;
+}
+.genre-item {
+  border: none;
+  background: #f3f4f6;
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+}
+.genre-item.active {
+  background: #0d1b67;
+  color: white;
+}
+.genre-item.clear {
+  background: #fff7ed;
 }
 
-/* Book cards */
+/* transition */
+.slide-fade-enter-active {
+  transition: all 180ms cubic-bezier(.2,.8,.2,1);
+}
+.slide-fade-leave-active {
+  transition: opacity 120ms;
+}
+.slide-fade-enter-from {
+  transform: translateY(-6px);
+  opacity: 0;
+}
+.slide-fade-enter-to {
+  transform: translateY(0);
+  opacity: 1;
+}
+.slide-fade-leave-from {
+  opacity: 1;
+}
+.slide-fade-leave-to {
+  opacity: 0;
+}
+
 .book-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
 }
-
 .book-card {
-  background: #fff;
-  border-radius: 1rem;
-  padding: 1.5rem;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
-  transition: 0.2s;
+  width: 150px;
+  background: #f9fafb;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  padding: 0.8rem;
+  transition: transform 0.2s;
 }
-
 .book-card:hover {
   transform: translateY(-4px);
 }
-
-.book-card h3 {
-  margin-bottom: 5px;
-  font-size: 1.1rem;
+.book-cover {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
 }
-
-.book-card p {
-  color: #64748b;
+.book-title {
   font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 0.2rem;
 }
-
-.genre-tag {
-  display: inline-block;
-  margin-top: 8px;
-  font-size: 0.8rem;
-  color: #667eea;
-  background-color: #eef5ff;
-  padding: 4px 8px;
+.book-author {
+  font-size: 0.85rem;
+  color: #555;
+}
+.add-btn,
+.details-btn {
+  border: none;
   border-radius: 6px;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  font-weight: 500;
+  margin-top: 0.2rem;
+  width: 100%;
+}
+.add-btn {
+  background-color: #e5edff;
+}
+.details-btn {
+  background-color: #eef3ff;
 }
 
-.no-results {
-  grid-column: 1 / -1;
-  color: #888;
-  margin-top: 40px;
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.modal {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+.category-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+.category-list button {
+  border: none;
+  background: #0d1b67;
+  color: white;
+  padding: 0.6rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.cancel-btn {
+  background: #ccc;
+  border: none;
+  border-radius: 8px;
+  padding: 0.6rem 1.2rem;
+  cursor: pointer;
+}
+
+.footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: #fff;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-around;
+  padding: 0.8rem 0;
+}
+.footer button {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #444;
+}
+.footer button.active {
+  color: #0d1b67;
+  font-weight: 600;
 }
 </style>

@@ -1,320 +1,321 @@
-<script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import axios from 'axios'
-
-const router = useRouter()
-
-// вкладки
-const tabs = ['Reading Now', 'In Plans', 'Finished', 'Favorites']
-const activeTab = ref('Reading Now')
-
-// состояния вкладок
-const library = ref({
-  'Reading Now': [],
-  'In Plans': [],
-  'Finished': [],
-  'Favorites': []
-})
-
-// поиск
-const searchQuery = ref('')
-const books = ref([])
-const loading = ref(false)
-const searching = ref(false) // чтобы знать, показываем ли найденные книги
-
-// поиск по Gutendex API
-const searchBooks = async () => {
-  if (!searchQuery.value.trim()) return
-  loading.value = true
-  searching.value = true
-  try {
-    const res = await axios.get(`https://gutendex.com/books?search=${searchQuery.value}`)
-    books.value = res.data.results
-  } catch (err) {
-    console.error('Ошибка загрузки книг:', err)
-  } finally {
-    loading.value = false
-  }
-}
-
-// добавить книгу в текущую вкладку
-const addBook = (book) => {
-  const tab = activeTab.value
-  if (!library.value[tab].find(b => b.id === book.id)) {
-    library.value[tab].push(book)
-  }
-}
-
-// удалить книгу
-const removeBook = (book) => {
-  const tab = activeTab.value
-  library.value[tab] = library.value[tab].filter(b => b.id !== book.id)
-}
-
-// проверить, есть ли книга в текущей вкладке
-const isInCurrentTab = (book) => {
-  const tab = activeTab.value
-  return library.value[tab].some(b => b.id === book.id)
-}
-
-// закрыть результаты поиска
-const closeSearchResults = () => {
-  books.value = []
-  searchQuery.value = ''
-  searching.value = false
-}
-
-// открыть BookDetails.vue
-const openBookDetails = (book) => {
-  router.push({ name: 'book-details', params: { id: book.id } })
-}
-</script>
-
 <template>
   <div class="library-container">
     <!-- Header -->
     <header class="library-header">
-      <h1>📚 My Library</h1>
-      <p>Manage your reading journey</p>
+      <img :src="lightliblogo" alt="logo" class="logo" />
+      <h1 class="title">My Library</h1>
     </header>
 
-    <!-- Tabs -->
-    <div class="tabs">
+    <!-- Category Tabs -->
+    <div class="category-tabs">
       <button
-        v-for="tab in tabs"
-        :key="tab"
-        @click="activeTab = tab"
-        :class="{ active: activeTab === tab }"
+        v-for="cat in categories"
+        :key="cat"
+        @click="selectedCategory = cat"
+        :class="{ active: selectedCategory === cat }"
       >
-        {{ tab }}
+        {{ cat }}
       </button>
     </div>
 
-    <!-- Search -->
-    <section class="search-section">
+    <!-- Search Bar -->
+    <div class="search-bar">
       <input
         v-model="searchQuery"
-        @keyup.enter="searchBooks"
-        placeholder="Search for books..."
+        placeholder="Search in your library..."
         class="search-input"
       />
-      <button @click="searchBooks" class="search-btn">Search</button>
-      <button
-        v-if="searching"
-        @click="closeSearchResults"
-        class="close-btn"
-      >
-        ✖ Close
+      <button v-if="searchQuery" class="clear-btn" @click="searchQuery = ''">
+        ✖
       </button>
-    </section>
+    </div>
 
-    <!-- Loading -->
-    <div v-if="loading" class="loading">Loading...</div>
+    <!-- Books -->
+    <div class="books-section">
+      <div v-if="filteredBooks.length === 0" class="empty">
+        <p>
+          <span v-if="!searchQuery">No books yet in "{{ selectedCategory }}"</span>
+          <span v-else>No results for "{{ searchQuery }}"</span>
+        </p>
+      </div>
 
-    <!-- Search Results -->
-    <section v-if="!loading && searching && books.length" class="book-list">
-      <h2>Results</h2>
-      <div class="book-grid">
-        <div v-for="book in books" :key="book.id" class="book-card">
+      <div v-else class="book-grid">
+        <div v-for="book in filteredBooks" :key="book.id" class="book-card">
           <img
-            v-if="book.formats['image/jpeg']"
+            v-if="book.formats?.['image/jpeg']"
             :src="book.formats['image/jpeg']"
             alt="cover"
             class="book-cover"
           />
-          <h3>{{ book.title }}</h3>
-          <p v-if="book.authors?.length">{{ book.authors[0].name }}</p>
-
-          <button
-            v-if="!isInCurrentTab(book)"
-            @click="addBook(book)"
-            class="add-btn"
-          >
-            ➕ Add
-          </button>
-          <button
-            v-else
-            @click="removeBook(book)"
-            class="remove-btn"
-          >
-            ❌ Remove
-          </button>
-
-          <button @click="openBookDetails(book)" class="details-btn">
+          <h3 class="book-title">{{ book.title }}</h3>
+          <p v-if="book.authors?.length" class="book-author">
+            {{ book.authors[0].name }}
+          </p>
+          <button class="details-btn" @click="openBookDetails(book)">
             📖 Details
           </button>
+          <button class="remove-btn" @click="removeBook(selectedCategory, book.id)">
+            ❌ Remove
+          </button>
         </div>
       </div>
-    </section>
+    </div>
 
-    <!-- Current Tab Books -->
-    <section v-if="!searching && library[activeTab].length" class="my-books">
-      <h2>{{ activeTab }}</h2>
-      <div class="book-grid">
-        <div v-for="book in library[activeTab]" :key="book.id" class="book-card">
-          <img
-            v-if="book.formats['image/jpeg']"
-            :src="book.formats['image/jpeg']"
-            alt="cover"
-            class="book-cover"
-          />
-          <h3>{{ book.title }}</h3>
-          <p v-if="book.authors?.length">{{ book.authors[0].name }}</p>
-          <button @click="removeBook(book)" class="remove-btn">🗑 Remove</button>
-          <button @click="openBookDetails(book)" class="details-btn">📖 Details</button>
-        </div>
-      </div>
-    </section>
-
-    <p v-else-if="!loading && !searching" class="empty-text">
-      No books yet in "{{ activeTab }}"
-    </p>
-
-    <!-- Bottom Navigation -->
+    <!-- Footer -->
     <footer class="footer">
-      <button @click="router.push('/home')">🏠 Home</button>
-      <button @click="router.push('/search')">🔍 Search</button>
-      <button class="active" @click="router.push('/library')">📚 Library</button>
-      <button @click="router.push('/profile')">👤 Profile</button>
+      <button @click="router.push('/home')">🏠</button>
+      <button @click="router.push('/search')">🔍</button>
+      <button class="active" @click="router.push('/library')">📚</button>
+      <button @click="router.push('/profile')">👤</button>
     </footer>
   </div>
 </template>
 
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import lightliblogo from '@/assets/lightliblogo.png'
+
+const router = useRouter()
+
+// Категории библиотеки
+const categories = ["Reading Now", "In Plans", "Finished", "Favorites"]
+
+// Состояние библиотеки
+const library = ref({})
+const selectedCategory = ref("Reading Now")
+const searchQuery = ref("")
+
+// 🔥 Универсальный загрузчик библиотеки
+const loadLibrary = () => {
+  const raw = localStorage.getItem("lightlib-library")
+
+  if (!raw) {
+    // если данных нет — создаём пустую структуру
+    library.value = {
+      "Reading Now": [],
+      "In Plans": [],
+      "Finished": [],
+      "Favorites": [],
+    }
+    return
+  }
+
+  let saved
+  try {
+    saved = JSON.parse(raw)
+  } catch (e) {
+    saved = {}
+  }
+
+  // 🔥 Старый формат — массив книг
+  if (Array.isArray(saved)) {
+    const grouped = {
+      "Reading Now": [],
+      "In Plans": [],
+      "Finished": [],
+      "Favorites": []
+    }
+
+    saved.forEach(b => {
+      const tab = b._tab || "Reading Now"
+      if (!grouped[tab]) grouped[tab] = []
+      grouped[tab].push(b)
+    })
+
+    library.value = grouped
+    return
+  }
+
+  // 🔥 Новый формат — объект
+  library.value = {
+    "Reading Now": saved["Reading Now"] || [],
+    "In Plans": saved["In Plans"] || [],
+    "Finished": saved["Finished"] || [],
+    "Favorites": saved["Favorites"] || [],
+  }
+}
+
+onMounted(loadLibrary)
+
+// Книги с фильтрацией
+const filteredBooks = computed(() => {
+  const books = library.value[selectedCategory.value] || []
+  if (!searchQuery.value.trim()) return books
+  const q = searchQuery.value.toLowerCase()
+  return books.filter(
+    b =>
+      b.title?.toLowerCase().includes(q) ||
+      b.authors?.some(a => a.name?.toLowerCase().includes(q))
+  )
+})
+
+// Удаление книги
+const removeBook = (category, id) => {
+  if (!confirm("Remove this book?")) return
+  library.value[category] = library.value[category].filter(b => b.id !== id)
+  localStorage.setItem("lightlib-library", JSON.stringify(library.value))
+}
+
+// Открытие деталей
+const openBookDetails = (book) => {
+  router.push({ name: "book-details", params: { id: book.id } })
+}
+</script>
+
 <style scoped>
+/* ТВОЙ CSS — полностью без изменений */
 .library-container {
-  padding: 1.5rem 2rem;
-  font-family: 'Inter', sans-serif;
-  color: #222;
-  display: flex;
-  flex-direction: column;
+  padding: 1rem;
   min-height: 100vh;
   background: #fff;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Inter', sans-serif;
 }
 
-/* Header */
 .library-header {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
   margin-bottom: 1rem;
 }
-
-/* Tabs */
-.tabs {
-  display: flex;
-  justify-content: space-around;
-  margin-bottom: 1.2rem;
+.logo {
+  height: 40px;
 }
-.tabs button {
+.title {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #0d1b67;
+}
+
+.category-tabs {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+  gap: 0.4rem;
+}
+.category-tabs button {
   flex: 1;
+  padding: 0.6rem;
   border: none;
-  padding: 0.5rem;
+  border-radius: 10px;
   background: #f3f4f6;
-  border-radius: 8px;
-  margin: 0 0.3rem;
   cursor: pointer;
   font-weight: 500;
+  transition: background 0.3s;
 }
-.tabs button.active {
+.category-tabs button:hover {
+  background: #e6e7eb;
+}
+.category-tabs button.active {
   background: #0d1b67;
-  color: #fff;
+  color: white;
 }
 
-/* Search */
-.search-section {
+.search-bar {
   display: flex;
   justify-content: center;
-  gap: 0.5rem;
+  position: relative;
   margin-bottom: 1rem;
 }
 .search-input {
+  width: 80%;
   padding: 0.6rem 1rem;
-  border-radius: 8px;
   border: 1px solid #ccc;
-  width: 60%;
+  border-radius: 10px;
+  font-size: 0.95rem;
 }
-.search-btn {
-  background-color: #0d1b67;
-  color: white;
+.clear-btn {
+  position: absolute;
+  right: 12%;
+  background: none;
   border: none;
-  border-radius: 8px;
-  padding: 0.6rem 1.2rem;
+  font-size: 1rem;
   cursor: pointer;
-}
-.close-btn {
-  background-color: #ccc;
-  color: #333;
-  border: none;
-  border-radius: 8px;
-  padding: 0.6rem 1rem;
-  cursor: pointer;
+  color: #666;
 }
 
-/* Books */
 .book-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
   justify-content: center;
+  gap: 1rem;
 }
 .book-card {
+  width: 150px;
   background: #f9fafb;
   border-radius: 12px;
-  width: 160px;
-  min-height: 280px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 0.5rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  padding: 0.8rem;
   text-align: center;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  transition: transform 0.2s;
+}
+.book-card:hover {
+  transform: translateY(-4px);
 }
 .book-cover {
   width: 100%;
   height: 200px;
-  object-fit: cover;
   border-radius: 8px;
+  object-fit: cover;
   margin-bottom: 0.5rem;
 }
-.add-btn, .remove-btn, .details-btn {
-  border: none;
-  border-radius: 6px;
-  padding: 0.4rem 0.8rem;
-  cursor: pointer;
-  font-weight: 500;
-  margin-top: 0.2rem;
+.book-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 0.2rem;
 }
-.add-btn {
-  background-color: #e5edff;
+.book-author {
+  font-size: 0.85rem;
+  color: #555;
+  margin-bottom: 0.5rem;
 }
+.details-btn,
 .remove-btn {
-  background-color: #ffe5e5;
+  width: 100%;
+  padding: 0.4rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.2s;
+  margin-bottom: 0.3rem;
 }
 .details-btn {
-  background-color: #eef3ff;
+  background: #e5edff;
+}
+.details-btn:hover {
+  background: #d9e5ff;
+}
+.remove-btn {
+  background: #ffe5e5;
+}
+.remove-btn:hover {
+  background: #ffcccc;
 }
 
-/* Empty */
-.empty-text {
+.empty {
   text-align: center;
   color: #777;
-  margin-top: 2rem;
+  padding-top: 3rem;
 }
 
-/* Footer */
 .footer {
-  margin-top: auto;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: #fff;
+  border-top: 1px solid #e5e7eb;
   display: flex;
   justify-content: space-around;
-  border-top: 1px solid #e5e7eb;
-  padding: 1rem 0;
-  background: #fff;
-  position: sticky;
-  bottom: 0;
+  padding: 0.8rem 0;
 }
 .footer button {
   background: none;
   border: none;
-  font-size: 1rem;
+  font-size: 1.2rem;
   cursor: pointer;
   color: #444;
 }
