@@ -1,0 +1,24 @@
+{
+  "books": [
+    {
+      "id": 1,
+      "title": "Pride and Prejudice",
+      "author": "Jane Austen",
+      "genre": ["Romance", "Classic"],
+      "language": "en",
+      "coverImage": "https://www.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg",
+      "content": "It is a truth universally acknowledged...",
+      "progress": 0
+    },
+    {
+      "id": 2,
+      "title": "Frankenstein",
+      "author": "Mary Shelley",
+      "genre": ["Horror", "Science Fiction"],
+      "language": "en",
+      "coverImage": "https://www.gutenberg.org/cache/epub/84/pg84.cover.medium.jpg",
+      "content": "You will rejoice to hear that no disaster has accompanied...",
+      "progress": 0
+    }
+  ]
+}
