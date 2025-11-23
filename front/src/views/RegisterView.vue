@@ -22,8 +22,28 @@ const handleRegister = async () => {
     return
   }
 
-  if (password.value.length < 6) {
-    errorMessage.value = 'Password must be at least 6 characters'
+  if (password.value.length < 8) {
+    errorMessage.value = 'Password must be at least 8 characters'
+    return
+  }
+
+  if (!/[A-Z]/.test(password.value)) {
+    errorMessage.value = 'Password must contain at least one uppercase letter'
+    return
+  }
+
+  if (!/[a-z]/.test(password.value)) {
+    errorMessage.value = 'Password must contain at least one lowercase letter'
+    return
+  }
+
+  if (!/\d/.test(password.value)) {
+    errorMessage.value = 'Password must contain at least one digit'
+    return
+  }
+
+  if (!/[!@#$%^&*?]/.test(password.value)) {
+    errorMessage.value = 'Password must contain at least one special character'
     return
   }
 
@@ -93,7 +113,7 @@ const toggleConfirmPasswordVisibility = () => {
               id="password"
               v-model="password"
               :type="showPassword ? 'text' : 'password'"
-              placeholder="At least 6 characters"
+              placeholder="At least 8 characters"
               required
             />
             <button type="button" class="toggle-password" @click="togglePasswordVisibility">
