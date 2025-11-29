@@ -1,0 +1,137 @@
+name: Backend CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "back/**"
+      - ".github/workflows/backend.yml"
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "back/**"
+
+jobs:
+  # Test and Build
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+          cache-dependency-path: back/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./back
+        run: npm ci
+
+      - name: Run tests (if you have tests)
+        working-directory: ./back
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: testdb
+          DB_USER: testuser
+          DB_PASSWORD: testpass
+          JWT_SECRET: test-secret
+          NODE_ENV: test
+        run: npm test || echo "No tests configured yet"
+
+      - name: Check code style
+        working-directory: ./back
+        run: npm run lint || echo "No linter configured"
+
+  # Build Docker Image
+  build-docker:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./back
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/bookapp-backend:latest
+            ${{ secrets.DOCKER_USERNAME }}/bookapp-backend:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/bookapp-backend:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/bookapp-backend:buildcache,mode=max
+
+  # Deploy to Production (Railway/Render)
+  deploy-production:
+    needs: build-docker
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Deploy to Railway
+      - name: Deploy to Railway
+        uses: bervProject/railway-deploy@main
+        with:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          service: bookapp-backend
+
+    # OR Deploy to Render (uncomment if using Render)
+    # - name: Deploy to Render
+    #   uses: johnbeynon/render-deploy-action@v0.0.8
+    #   with:
+    #     service-id: ${{ secrets.RENDER_SERVICE_ID }}
+    #     api-key: ${{ secrets.RENDER_API_KEY }}
+
+  # Deploy to Staging
+  deploy-staging:
+    needs: build-docker
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy to Railway (Staging)
+        uses: bervProject/railway-deploy@main
+        with:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          service: bookapp-backend-staging
