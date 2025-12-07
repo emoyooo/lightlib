@@ -8,6 +8,7 @@ import libraryRoutes from "./routes/libraryRoutes.js";
 import readingRoutes from "./routes/readingRoutes.js";
 import { authenticate } from "./middleware/authMiddleware.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import achievementRoutes from "./routes/achievementRoutes.js";
 
 dotenv.config();
 
@@ -27,6 +28,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/books", bookRoutes);
 app.use("/api/library", authenticate, libraryRoutes);
 app.use("/api/reading", authenticate, readingRoutes);
+app.use("/api/user", authenticate, achievementRoutes);
 
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", message: "Server is running" });

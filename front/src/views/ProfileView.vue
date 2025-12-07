@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
-import { libraryAPI, readingAPI } from '../services/api'
+import { libraryAPI, achievementAPI } from '../services/api'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -12,72 +12,88 @@ const stats = ref({
   booksRead: 0,
   dayStreak: 0,
   hoursRead: 0,
+  pagesRead: 0,
   monthlyGoal: 4,
   monthlyProgress: 0,
 })
 
-const achievements = ref([
-  {
-    id: 1,
-    icon: '📖',
-    title: 'Bookworm',
-    description: 'Read 50 books',
-    progress: 94,
-    total: 50,
-    earned: false,
-    bgColor: '#f5f5f5',
-  },
-  {
-    id: 2,
-    icon: '🦉',
-    title: 'Night Owl',
-    description: 'Read for 7 days straight',
-    progress: 100,
-    earned: true,
-    bgColor: '#fff9e6',
-  },
-  {
-    id: 3,
-    icon: '🏆',
-    title: 'Genre Explorer',
-    description: 'Read 5 different genres',
-    progress: 100,
-    earned: true,
-    bgColor: '#fff9e6',
-  },
-  {
-    id: 4,
-    icon: '🎯',
-    title: 'Speed Reader',
-    description: 'Finish a book in one day',
-    progress: 0,
-    earned: false,
-    bgColor: '#f5f5f5',
-  },
-])
+const achievements = ref([])
+const loading = ref(false)
 
 const fetchStats = async () => {
+  loading.value = true
   try {
-    const [finishedRes, readingRes] = await Promise.all([
-      libraryAPI.getLibrary('finished'),
-      libraryAPI.getLibrary('reading'),
-    ])
+    // Try to fetch achievement stats first
+    try {
+      const statsRes = await achievementAPI.getStats()
+      const achievementStats = statsRes.data.data
 
-    stats.value.booksRead = finishedRes.data.length
-    stats.value.monthlyProgress = finishedRes.data.length
+      stats.value.booksRead = achievementStats.books_read || 0
+      stats.value.dayStreak = achievementStats.streak || 0
+      stats.value.pagesRead = achievementStats.pages_read || 0
+      stats.value.hoursRead = Math.floor(achievementStats.pages_read / 50) || 0
 
-    // Calculate streak (simplified - you'd calculate this properly)
-    stats.value.dayStreak = 12
+      // Calculate monthly progress (cap at monthly goal)
+      const currentMonth = new Date().getMonth()
+      const currentYear = new Date().getFullYear()
 
-    // Calculate hours (simplified - you'd track this properly)
-    stats.value.hoursRead = Math.floor(stats.value.booksRead * 3.3)
+      const finishedRes = await libraryAPI.getLibrary('finished')
+      const monthlyBooks = finishedRes.data.filter((book) => {
+        const addedDate = new Date(book.added_at)
+        return addedDate.getMonth() === currentMonth && addedDate.getFullYear() === currentYear
+      }).length
+
+      stats.value.monthlyProgress = Math.min(monthlyBooks, stats.value.monthlyGoal)
+    } catch (apiError) {
+      console.error('Achievement API not available, using fallback:', apiError)
+
+      // Fallback to library data only
+      const finishedRes = await libraryAPI.getLibrary('finished')
+      stats.value.booksRead = finishedRes.data.length
+
+      // Calculate monthly progress
+      const currentMonth = new Date().getMonth()
+      const currentYear = new Date().getFullYear()
+
+      const monthlyBooks = finishedRes.data.filter((book) => {
+        const addedDate = new Date(book.added_at)
+        return addedDate.getMonth() === currentMonth && addedDate.getFullYear() === currentYear
+      }).length
+
+      stats.value.monthlyProgress = Math.min(monthlyBooks, stats.value.monthlyGoal)
+      stats.value.dayStreak = 0
+      stats.value.hoursRead = 0
+    }
   } catch (error) {
     console.error('Failed to fetch stats:', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+const fetchAchievements = async () => {
+  try {
+    const response = await achievementAPI.getAchievements()
+    achievements.value = response.data.data
+    console.log('Achievements loaded:', achievements.value)
+  } catch (error) {
+    console.error('Failed to fetch achievements:', error)
+    console.error('Error details:', error.response?.data || error.message)
+    // Set empty array as fallback
+    achievements.value = []
   }
 }
 
 const monthlyGoalPercentage = computed(() => {
   return Math.min((stats.value.monthlyProgress / stats.value.monthlyGoal) * 100, 100)
+})
+
+const earnedAchievements = computed(() => {
+  return achievements.value.filter((a) => a.earned)
+})
+
+const inProgressAchievements = computed(() => {
+  return achievements.value.filter((a) => !a.earned)
 })
 
 const handleLogout = () => {
@@ -92,6 +108,7 @@ onMounted(() => {
     router.push('/login')
   } else {
     fetchStats()
+    fetchAchievements()
   }
 })
 </script>
@@ -141,7 +158,7 @@ onMounted(() => {
             <h2 class="profile-name">{{ authStore.user?.nickname || 'Reader' }}</h2>
             <p class="profile-email">{{ authStore.user?.email }}</p>
 
-            <!-- <div class="profile-stats">
+            <div class="profile-stats">
               <div class="stat">
                 <div class="stat-value">{{ stats.booksRead }}</div>
                 <div class="stat-label">Books Read</div>
@@ -154,16 +171,16 @@ onMounted(() => {
                 <div class="stat-value stat-purple">{{ stats.hoursRead }}h</div>
                 <div class="stat-label">Hours Read</div>
               </div>
-            </div> -->
+            </div>
           </div>
         </div>
 
         <!-- Monthly Reading Goal -->
         <div class="goal-card">
           <div class="goal-header">
-            <span class="goal-icon" style="color: #8e424b"
-              ><font-awesome-icon :icon="['fas', 'crosshairs']"
-            /></span>
+            <span class="goal-icon" style="color: #8e424b">
+              <font-awesome-icon :icon="['fas', 'crosshairs']" />
+            </span>
             <h3>Monthly Reading Goal</h3>
           </div>
 
@@ -185,50 +202,73 @@ onMounted(() => {
             to reach your goal.
           </p>
         </div>
-
-        <!-- Reading Activity (Placeholder) -->
-        <!-- <div class="activity-card">
-          <h3>
-            <font-awesome-icon :icon="['far', 'chart-column']" />
-            Reading Activity
-          </h3>
-          <p class="coming-soon">Activity chart coming soon...</p>
-        </div> -->
       </div>
 
       <!-- Achievements Tab -->
       <div v-if="activeTab === 'achievements'" class="tab-content">
-        <h2 class="achievements-title">Your Achievements</h2>
+        <div v-if="loading" class="loading">Loading achievements...</div>
 
-        <!-- <div class="achievements-grid">
-          <div
-            v-for="achievement in achievements"
-            :key="achievement.id"
-            :class="['achievement-card', { earned: achievement.earned }]"
-            :style="{ background: achievement.bgColor }"
-          >
-            <div class="achievement-icon">{{ achievement.icon }}</div>
-            <div class="achievement-info">
-              <h3 class="achievement-title">{{ achievement.title }}</h3>
-              <p class="achievement-description">{{ achievement.description }}</p>
+        <div v-else>
+          <div class="achievements-header">
+            <h2 class="achievements-title">Your Achievements</h2>
+            <p class="achievements-subtitle">
+              {{ earnedAchievements.length }} of {{ achievements.length }} earned
+            </p>
+          </div>
 
+          <!-- Earned Achievements -->
+          <div v-if="earnedAchievements.length > 0" class="achievement-section">
+            <h3 class="section-title">🏆 Earned</h3>
+            <div class="achievements-grid">
               <div
-                v-if="!achievement.earned && achievement.progress !== undefined"
-                class="achievement-progress"
+                v-for="achievement in earnedAchievements"
+                :key="achievement.id"
+                class="achievement-card earned"
+                :style="{ background: achievement.bgColor }"
               >
-                <div class="progress-bar-small">
-                  <div
-                    class="progress-fill-small"
-                    :style="{ width: `${achievement.progress}%` }"
-                  ></div>
+                <div class="achievement-icon">{{ achievement.icon }}</div>
+                <div class="achievement-info">
+                  <h3 class="achievement-title">{{ achievement.title }}</h3>
+                  <p class="achievement-description">{{ achievement.description }}</p>
+                  <span class="earned-badge">Earned!</span>
                 </div>
-                <span class="progress-text-small">{{ achievement.progress }}% complete</span>
               </div>
-
-              <span v-if="achievement.earned" class="earned-badge">Earned!</span>
             </div>
           </div>
-        </div> -->
+
+          <!-- In Progress Achievements -->
+          <div v-if="inProgressAchievements.length > 0" class="achievement-section">
+            <h3 class="section-title">📈 In Progress</h3>
+            <div class="achievements-grid">
+              <div
+                v-for="achievement in inProgressAchievements"
+                :key="achievement.id"
+                class="achievement-card"
+                :style="{ background: achievement.bgColor }"
+              >
+                <div class="achievement-icon">{{ achievement.icon }}</div>
+                <div class="achievement-info">
+                  <h3 class="achievement-title">{{ achievement.title }}</h3>
+                  <p class="achievement-description">{{ achievement.description }}</p>
+
+                  <div class="achievement-progress">
+                    <div class="progress-bar-small">
+                      <div
+                        class="progress-fill-small"
+                        :style="{ width: `${achievement.progress}%` }"
+                      ></div>
+                    </div>
+                    <span class="progress-text-small">
+                      {{ achievement.currentValue }} / {{ achievement.target }} ({{
+                        achievement.progress
+                      }}% complete)
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Settings Tab -->
@@ -242,7 +282,6 @@ onMounted(() => {
               <div class="setting-label">Email</div>
               <div class="setting-value">{{ authStore.user?.email }}</div>
             </div>
-            <button class="setting-btn">Edit</button>
           </div>
 
           <div class="setting-item">
@@ -298,6 +337,9 @@ onMounted(() => {
   cursor: pointer;
   font-size: 1rem;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .tabs {
@@ -344,6 +386,12 @@ onMounted(() => {
   to {
     opacity: 1;
   }
+}
+
+.loading {
+  text-align: center;
+  padding: 3rem;
+  color: #666;
 }
 
 /* Profile Card */
@@ -470,24 +518,31 @@ onMounted(() => {
   font-size: 0.95rem;
 }
 
-/* Activity Card */
-.activity-card {
-  background: white;
-  border-radius: 16px;
-  padding: 2rem;
-  text-align: center;
-}
-
-.coming-soon {
-  color: #999;
-  margin-top: 1rem;
-}
-
 /* Achievements */
+.achievements-header {
+  margin-bottom: 2rem;
+}
+
 .achievements-title {
   font-size: 1.5rem;
   font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.achievements-subtitle {
+  color: #666;
+  font-size: 1rem;
+}
+
+.achievement-section {
+  margin-bottom: 3rem;
+}
+
+.section-title {
+  font-size: 1.2rem;
+  font-weight: 600;
   margin-bottom: 1.5rem;
+  color: #1a1a1a;
 }
 
 .achievements-grid {
@@ -503,10 +558,17 @@ onMounted(() => {
   display: flex;
   gap: 1rem;
   transition: all 0.2s;
+  border: 2px solid transparent;
 }
 
 .achievement-card.earned {
-  border: 2px solid #fbbf24;
+  border-color: #fbbf24;
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.2);
+}
+
+.achievement-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .achievement-icon {
@@ -552,7 +614,7 @@ onMounted(() => {
 
 .progress-fill-small {
   height: 100%;
-  background: #1a1a1a;
+  background: #04103c;
   transition: width 0.3s;
 }
 

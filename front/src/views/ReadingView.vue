@@ -15,12 +15,12 @@ const currentChapter = ref(1)
 const showSettings = ref(false)
 const showBookmarks = ref(false)
 const bookmarks = ref([])
+const progressRestored = ref(false) // Track if progress was restored
 
 const fontSize = ref(16)
 const fontFamily = ref('serif')
 const lineHeight = ref(1.8)
 const backgroundColor = ref('#ffffff')
-const textColor = ref('#000000')
 
 const pages = ref([])
 const WORDS_PER_PAGE = 500
@@ -45,14 +45,39 @@ const fetchBookContent = async () => {
 
     splitIntoPages(content.value)
 
-    const progressResponse = await readingAPI.getProgress(route.params.id)
-    if (progressResponse.data.currentPage > 0) {
-      currentPage.value = progressResponse.data.currentPage
-      currentChapter.value = progressResponse.data.currentChapter
+    // Fetch saved progress AFTER splitting pages
+    try {
+      const progressResponse = await readingAPI.getProgress(route.params.id)
+      const savedProgress = progressResponse.data
+
+      // Check if we have valid saved progress
+      if (savedProgress && savedProgress.current_page > 0) {
+        console.log('Restoring progress:', savedProgress)
+        currentPage.value = savedProgress.current_page
+        currentChapter.value = savedProgress.current_chapter || 1
+        totalPages.value = savedProgress.total_pages || totalPages.value
+        progressRestored.value = true
+
+        // Hide banner after 5 seconds
+        setTimeout(() => {
+          progressRestored.value = false
+        }, 5000)
+      } else {
+        console.log('No saved progress found, starting from page 1')
+      }
+    } catch (progressError) {
+      console.log('No previous reading progress found')
+      // This is fine - user is starting fresh
     }
 
-    const bookmarksResponse = await readingAPI.getBookmarks(route.params.id)
-    bookmarks.value = bookmarksResponse.data
+    // Fetch bookmarks
+    try {
+      const bookmarksResponse = await readingAPI.getBookmarks(route.params.id)
+      bookmarks.value = bookmarksResponse.data
+    } catch (bookmarkError) {
+      console.log('No bookmarks found')
+      bookmarks.value = []
+    }
   } catch (error) {
     console.error('Failed to fetch book content:', error)
     alert('Failed to load book content')
@@ -90,15 +115,22 @@ const previousPage = () => {
 
 const saveProgress = async () => {
   try {
-    await readingAPI.updateProgress({
+    const progressData = {
       bookId: parseInt(route.params.id),
       currentPage: currentPage.value,
       totalPages: totalPages.value,
       currentChapter: currentChapter.value,
       percentage: progress.value,
-    })
+    }
+
+    console.log('Saving progress:', progressData)
+
+    await readingAPI.updateProgress(progressData)
+
+    console.log('Progress saved successfully')
   } catch (error) {
     console.error('Failed to save progress:', error)
+    // Don't show alert - this happens automatically, shouldn't interrupt reading
   }
 }
 
@@ -170,7 +202,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="reading-view" :style="{ backgroundColor, color: textColor }">
+  <div class="reading-view" :style="{ backgroundColor }">
     <header class="reading-header">
       <button @click="router.back()" class="header-btn" style="color: #86868696">
         <font-awesome-icon :icon="['fas', 'arrow-left']" />
@@ -207,18 +239,17 @@ onMounted(() => {
           lineHeight: lineHeight,
         }"
       >
-        <h2 class="chapter-title">Chapter {{ currentChapter }}: The Library Between Worlds</h2>
         <p class="content-text">{{ currentContent }}</p>
       </div>
     </div>
 
     <footer class="reading-footer">
       <button @click="previousPage" :disabled="currentPage === 1" class="nav-btn">
-        ← Previous
+        <font-awesome-icon :icon="['fas', 'arrow-left']" /> Previous
       </button>
       <div class="page-info">Page {{ currentPage }} of {{ totalPages }}</div>
       <button @click="nextPage" :disabled="currentPage === totalPages" class="nav-btn">
-        Next →
+        Next <font-awesome-icon :icon="['fas', 'arrow-right']" />
       </button>
     </footer>
 
@@ -258,25 +289,23 @@ onMounted(() => {
         <label>Background Color</label>
         <div class="color-options">
           <button
-            @click="((backgroundColor = '#ffffff'), (textColor = '#000000'))"
+            @click="backgroundColor = '#ffffff'"
             class="color-btn"
             :class="{ active: backgroundColor === '#ffffff' }"
             style="background: #ffffff; color: #000"
           >
             Light
           </button>
-
           <button
-            @click="((backgroundColor = '#f5f5dc'), (textColor = '#24241d'))"
+            @click="backgroundColor = '#f5f5dc'"
             class="color-btn"
             :class="{ active: backgroundColor === '#f5f5dc' }"
-            style="background: #f5f5dc; color: #24241d"
+            style="background: #f5f5dc; color: #000"
           >
             Sepia
           </button>
-
           <button
-            @click="((backgroundColor = '#1a1a1a'), (textColor = '#ffffff'))"
+            @click="backgroundColor = '#1a1a1a'"
             class="color-btn"
             :class="{ active: backgroundColor === '#1a1a1a' }"
             style="background: #1a1a1a; color: #fff"
@@ -370,7 +399,7 @@ onMounted(() => {
 
 .progress-fill-top {
   height: 100%;
-  background: #04103c;
+  background: hsla(160, 100%, 37%, 1);
   transition: width 0.3s;
 }
 
@@ -412,7 +441,7 @@ onMounted(() => {
 
 .nav-btn {
   padding: 0.75rem 1.5rem;
-  background: #04103c;
+  background: hsla(160, 100%, 37%, 1);
   color: white;
   border: none;
   border-radius: 8px;
@@ -442,7 +471,6 @@ onMounted(() => {
   width: 350px;
   height: 100vh;
   background: white;
-  color: black;
   box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
   padding: 2rem;
   overflow-y: auto;
@@ -497,7 +525,7 @@ onMounted(() => {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #04103c;
+  background: hsla(160, 100%, 37%, 1);
   cursor: pointer;
 }
 
@@ -524,7 +552,7 @@ onMounted(() => {
 }
 
 .color-btn.active {
-  border-color: #04103c;
+  border-color: hsla(160, 100%, 37%, 1);
 }
 
 .empty-bookmarks {
@@ -559,7 +587,7 @@ onMounted(() => {
 .bookmark-page {
   font-weight: 600;
   margin-bottom: 0.5rem;
-  color: #04103c;
+  color: hsla(160, 100%, 37%, 1);
 }
 
 .bookmark-note {

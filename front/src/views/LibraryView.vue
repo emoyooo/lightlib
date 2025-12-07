@@ -183,12 +183,16 @@ onMounted(() => {
               </button>
               <button
                 v-else-if="activeTab === 'plan'"
-                @click="startReading(book.book_id)"
+                @click="(startReading(book.book_id), changeStatus(book.book_id, 'reading'))"
                 class="action-btn primary"
               >
                 Start Reading
               </button>
-              <button v-else @click="startReading(book.book_id)" class="action-btn primary">
+              <button
+                v-else
+                @click="(startReading(book.book_id), changeStatus(book.book_id, 'reading'))"
+                class="action-btn primary"
+              >
                 Read Again
               </button>
 

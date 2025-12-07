@@ -42,4 +42,10 @@ export const readingAPI = {
   deleteBookmark: (id) => api.delete(`/reading/bookmarks/${id}`),
 }
 
+// Achievement API (protected endpoints)
+export const achievementAPI = {
+  getAchievements: () => api.get('/user/achievements'),
+  getStats: () => api.get('/user/stats'),
+}
+
 export default api

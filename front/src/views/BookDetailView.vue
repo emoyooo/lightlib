@@ -100,7 +100,9 @@ onMounted(() => {
 
 <template>
   <div class="book-detail-view">
-    <button @click="router.back()" class="back-btn">← Book Details</button>
+    <button @click="router.back()" class="back-btn">
+      <font-awesome-icon :icon="['fas', 'arrow-left']" /> Back
+    </button>
 
     <div v-if="loading" class="loading">Loading...</div>
 
@@ -164,7 +166,10 @@ onMounted(() => {
           </div>
 
           <div class="action-buttons">
-            <button @click="startReading" class="btn-primary">
+            <button
+              @click="(startReading, changeStatus(book.book_id, 'reading'))"
+              class="btn-primary"
+            >
               {{ progress?.percentage > 0 ? 'Continue Reading' : 'Start Reading' }}
             </button>
             <button v-if="!inLibrary" @click="addToLibrary" class="btn-secondary">
