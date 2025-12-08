@@ -12,7 +12,6 @@ on:
       - "back/**"
 
 jobs:
-  # Test and Build
   test:
     runs-on: ubuntu-latest
 
@@ -33,14 +32,14 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
+        node-version: [20.x]
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: "npm"
@@ -50,7 +49,7 @@ jobs:
         working-directory: ./back
         run: npm ci
 
-      - name: Run tests (if you have tests)
+      - name: Run tests
         working-directory: ./back
         env:
           DB_HOST: localhost
@@ -60,78 +59,46 @@ jobs:
           DB_PASSWORD: testpass
           JWT_SECRET: test-secret
           NODE_ENV: test
-        run: npm test || echo "No tests configured yet"
+        run: npm test
 
-      - name: Check code style
+      - name: Lint code
         working-directory: ./back
         run: npm run lint || echo "No linter configured"
 
-  # Build Docker Image
-  build-docker:
+  deploy-production:
     needs: test
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v4
-        with:
-          context: ./back
-          push: true
-          tags: |
-            ${{ secrets.DOCKER_USERNAME }}/bookapp-backend:latest
-            ${{ secrets.DOCKER_USERNAME }}/bookapp-backend:${{ github.sha }}
-          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/bookapp-backend:buildcache
-          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/bookapp-backend:buildcache,mode=max
-
-  # Deploy to Production (Railway/Render)
-  deploy-production:
-    needs: build-docker
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      # Deploy to Railway
-      - name: Deploy to Railway
-        uses: bervProject/railway-deploy@main
-        with:
+      - name: Deploy to Railway Production
+        env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          service: bookapp-backend
+        run: |
+          railway link ${{ secrets.RAILWAY_PROJECT_ID }}
+          railway up --service backend --environment production
 
-    # OR Deploy to Render (uncomment if using Render)
-    # - name: Deploy to Render
-    #   uses: johnbeynon/render-deploy-action@v0.0.8
-    #   with:
-    #     service-id: ${{ secrets.RENDER_SERVICE_ID }}
-    #     api-key: ${{ secrets.RENDER_API_KEY }}
-
-  # Deploy to Staging
   deploy-staging:
-    needs: build-docker
+    needs: test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/develop'
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Deploy to Railway (Staging)
-        uses: bervProject/railway-deploy@main
-        with:
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy to Railway Staging
+        env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          service: bookapp-backend-staging
+        run: |
+          railway link ${{ secrets.RAILWAY_PROJECT_ID }}
+          railway up --service backend --environment staging

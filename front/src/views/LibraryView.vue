@@ -90,7 +90,9 @@ onMounted(() => {
 <template>
   <div class="library-view">
     <header class="library-header">
-      <button @click="router.push('/')" class="back-btn">← Back</button>
+      <button @click="router.push('/')" class="back-btn">
+        <font-awesome-icon :icon="['fas', 'arrow-left']" /> Back
+      </button>
       <h1>My Library</h1>
       <input
         v-model="searchQuery"

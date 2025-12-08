@@ -166,10 +166,7 @@ onMounted(() => {
           </div>
 
           <div class="action-buttons">
-            <button
-              @click="(startReading, changeStatus(book.book_id, 'reading'))"
-              class="btn-primary"
-            >
+            <button @click="startReading" class="btn-primary">
               {{ progress?.percentage > 0 ? 'Continue Reading' : 'Start Reading' }}
             </button>
             <button v-if="!inLibrary" @click="addToLibrary" class="btn-secondary">

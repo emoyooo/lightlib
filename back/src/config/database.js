@@ -74,6 +74,16 @@ export const initDatabase = async () => {
     );
   `;
 
+  const createUserSettingsTable = `
+    CREATE TABLE IF NOT EXISTS user_settings (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+      monthly_goal INTEGER DEFAULT 4,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `;
+
   const createIndexes = `
     CREATE INDEX IF NOT EXISTS idx_user_library_user_id ON user_library(user_id);
     CREATE INDEX IF NOT EXISTS idx_user_library_status ON user_library(status);
@@ -88,6 +98,7 @@ export const initDatabase = async () => {
     await pool.query(createUserLibraryTable);
     await pool.query(createReadingProgressTable);
     await pool.query(createBookmarksTable);
+    await pool.query(createUserSettingsTable);
     await pool.query(createIndexes);
     console.log("Database tables initialized successfully");
   } catch (error) {
