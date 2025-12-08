@@ -78,27 +78,9 @@ jobs:
         run: npm install -g @railway/cli
 
       - name: Deploy to Railway Production
+        working-directory: ./back
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          railway link ${{ secrets.RAILWAY_PROJECT_ID }}
-          railway up --service backend --environment production
-
-  deploy-staging:
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-
-      - name: Deploy to Railway Staging
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
-          railway link ${{ secrets.RAILWAY_PROJECT_ID }}
-          railway up --service backend --environment staging
+          railway link --projectId ${{ secrets.RAILWAY_PROJECT_ID }}
+          railway up --service lightlib --environment production

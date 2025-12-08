@@ -5,8 +5,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install ALL dependencies (including dev dependencies for potential build steps)
+RUN npm ci --prefer-offline --no-audit
 
 # Copy source code
 COPY . .
@@ -20,8 +20,14 @@ WORKDIR /app
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
-# Copy from builder
-COPY --from=builder --chown=nodejs:nodejs /app ./
+# Copy package files
+COPY package*.json ./
+
+# Install ONLY production dependencies
+RUN npm ci --only=production --prefer-offline --no-audit
+
+# Copy application code from builder
+COPY --from=builder --chown=nodejs:nodejs /app/src ./src
 
 USER nodejs
 
