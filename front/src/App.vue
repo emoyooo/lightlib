@@ -2,7 +2,6 @@
 import { RouterView, useRoute } from 'vue-router'
 import { useAuthStore } from './stores/auth'
 import { computed } from 'vue'
-import TopNavbar from './components/TopNavbar.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -15,7 +14,6 @@ const hideNavigation = computed(() => {
 
 <template>
   <div id="app">
-    <TopNavbar />
     <RouterView />
   </div>
 </template>

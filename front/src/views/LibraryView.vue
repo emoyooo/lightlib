@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { libraryAPI, readingAPI } from '../services/api'
+import TopNavbar from '../components/TopNavbar.vue'
 
 const isOpen = ref(false)
 const router = useRouter()
@@ -88,6 +89,7 @@ onMounted(() => {
 </script>
 
 <template>
+  <TopNavbar />
   <div class="library-view">
     <header class="library-header">
       <button @click="router.push('/')" class="back-btn">

@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { booksAPI, libraryAPI, readingAPI } from '../services/api'
 import { useAuthStore } from '../stores/auth'
+import TopNavbar from '../components/TopNavbar.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -99,6 +100,7 @@ onMounted(() => {
 </script>
 
 <template>
+  <TopNavbar />
   <div class="book-detail-view">
     <button @click="router.back()" class="back-btn">
       <font-awesome-icon :icon="['fas', 'arrow-left']" /> Back

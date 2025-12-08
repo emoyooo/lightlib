@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { booksAPI, libraryAPI, readingAPI } from '../services/api'
 import { useAuthStore } from '../stores/auth'
+import TopNavbar from '../components/TopNavbar.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -111,6 +112,7 @@ onMounted(async () => {
 </script>
 
 <template>
+  <TopNavbar />
   <div class="home-view">
     <!-- Welcome Section -->
     <section class="welcome-section">

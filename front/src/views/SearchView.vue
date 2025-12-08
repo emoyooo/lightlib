@@ -3,6 +3,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { booksAPI, libraryAPI } from '../services/api'
 import { useAuthStore } from '../stores/auth'
+import TopNavbar from '../components/TopNavbar.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -90,6 +91,7 @@ onMounted(() => {
 </script>
 
 <template>
+  <TopNavbar />
   <div class="search-view">
     <div class="search-content">
       <div class="search-header">
